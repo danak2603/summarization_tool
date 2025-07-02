@@ -1,0 +1,7 @@
+.env
+.venv/
+data/*.xml
+data/PMC*
+.DS_Store
+__pycache__/
+*.pyc
