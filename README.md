@@ -94,7 +94,7 @@ docker run --rm \
   --env-file .env \
   -v "$(pwd)/data:/app/data" \
   summarization_tool \
-  python main.py --role "pediatrician" --question "What are the latest treatment options for juvenile arthritis?"
+  python main.py --role "pediatrician" --question "What are the latest treatment options for juvenile arthritis?" --pmc_limit 1000
 ```
 
 #### On **Windows PowerShell**:
@@ -104,7 +104,8 @@ docker run --rm `
   --env-file .env `
   -v "${PWD}/data:/app/data" `
   summarization_tool `
-  python main.py --role "pediatrician" --question "What are the latest treatment options for juvenile arthritis?"
+  python main.py --role "pediatrician" --question "What are the latest treatment options for juvenile arthritis?" --pmc_limit 1000
+
 ```
 
 ---
