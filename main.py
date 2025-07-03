@@ -31,6 +31,11 @@ def generate_summary(user_role: str, user_question: str) -> str:
 
     pmc_dirs = [os.path.join("data", d) for d in os.listdir("data")
                 if d.lower().startswith("pmc") and os.path.isdir(os.path.join("data", d))]
+
+    if not pubmed_files and not pmc_dirs:
+        print("No data files found. Please run the download script first and place the data in the 'data/' folder.")
+        exit()
+
     articles_pmc = []
     for folder_path in pmc_dirs:
         articles_pmc.extend(parse_folder_pmc(folder_path, include_body=True, limit=500))
