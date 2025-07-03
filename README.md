@@ -142,6 +142,7 @@ The tool prints:
 - The summary is tailored to the user role: e.g., simplified language for GPs, technical details for researchers.
 - No data artifacts are included in the repository, in accordance with the submission guidelines.
 - Ensure that the data is downloaded using the provided script before running the summarization tool.
+- The `--pmc_limit` argument can be used to restrict the number of PMC XML files processed (recommended for debugging or reducing runtime).
 
 ---
 
