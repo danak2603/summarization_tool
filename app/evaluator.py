@@ -1,7 +1,5 @@
 import json
 import re
-import openai
-from openai import OpenAI
 from config import OPENAI_API_KEY, client
 
 evaluation_prompt_template = """
@@ -38,10 +36,16 @@ Please return the evaluation in the following JSON format:
 """
 
 def clean_json_text(text: str) -> str:
+    """
+    Cleans a JSON-formatted string by removing Markdown-style code blocks.
+    """
     text = re.sub(r"```(?:json)?\s*([\s\S]*?)\s*```", r"\1", text)
     return text.strip()
 
 def evaluate_summary(user_role: str, user_question: str, summary_text: str):
+    """
+    Sends the generated summary to an LLM for evaluation based on medical criteria.
+    """
     prompt = evaluation_prompt_template.format(
         user_role=user_role,
         user_question=user_question,

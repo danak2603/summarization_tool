@@ -1,11 +1,11 @@
-from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
-
-from openai import OpenAI
 from config import OPENAI_API_KEY, client
 
 def step_back_and_extract_topics(question, model="gpt-3.5-turbo"):
+    """
+    Extracts a broader biomedical context and related topics from a user question to support document retrieval.
+    """
     prompt = f"""
     You are a biomedical research assistant.
 
@@ -62,20 +62,33 @@ def step_back_and_extract_topics(question, model="gpt-3.5-turbo"):
     return summary, topics
 
 
-def softly_expand_topics(topics, model="gpt-3.5-turbo"):
-    prompt = f"""
-    You are a biomedical assistant.
-
-    For each of the following biomedical search topics, suggest 1–2 broader medical terms that can improve retrieval in article search.
-    Only include terms that are *truly broader* — not just related, narrower, or synonymous.
-    Avoid overly general terms such as "treatment", "therapy", "biologics", or "medicine".
-    Return a valid Python list of the expanded set only (no explanations, no formatting).
-
-    Original topics:
-    {topics}
-
-    Expanded topics:
+def softly_expand_topics(topics, model="gpt-3.5-turbo", max_terms=15):
     """
+    Expands a list of biomedical topics by adding broader, more general medical terms while avoiding overly generic ones.
+    """
+    blacklist = {"drugs", "medicine", "treatment", "therapy", "biologics", "pharmacology"}
+    min_length = 4
+
+    prompt = f"""
+    You are a biomedical assistant helping with literature retrieval.
+    
+    For each of the following biomedical search topics, suggest 1–2 truly *broader* medical terms to improve article search.
+    Only include *generalization-level terms* that subsume or encompass the original topic.
+    Avoid:
+    - Synonyms or related terms
+    - Narrower or equivalent terms
+    - Overly generic terms like "treatment", "therapy", "biologics", or "medicine"
+    
+    Example:
+    Input: ["asthma", "airway inflammation"]
+    Output: ["respiratory diseases", "pulmonary disorders"]
+    
+    Now expand the following:
+    {topics}
+    
+    Respond only with a valid Python list of strings. No extra text.
+    """
+
     response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
@@ -88,10 +101,23 @@ def softly_expand_topics(topics, model="gpt-3.5-turbo"):
     except:
         expanded = []
 
-    return list(set(topics) | set(expanded))
+    expanded_clean = [
+        t for t in expanded
+        if isinstance(t, str)
+        and t.lower() not in blacklist
+        and len(t) >= min_length
+        and not any(b in t.lower() for b in blacklist)
+    ]
+
+    combined = list(set(topics) | set(expanded_clean))
+
+    return combined[:max_terms]
 
 
 def build_faiss_vectorstore(documents):
+    """
+    Builds a FAISS vector store from input documents using OpenAI embeddings for efficient similarity search.
+    """
     embedding_model = OpenAIEmbeddings()
     vectorstore = FAISS.from_documents(documents, embedding_model)
     return vectorstore

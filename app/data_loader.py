@@ -1,5 +1,6 @@
 import re
 import os
+import glob
 import xml.etree.ElementTree as ET
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
@@ -7,6 +8,10 @@ from langchain_openai import OpenAIEmbeddings
 from config import OPENAI_API_KEY
 
 def parse_pubmed_file_filtered(xml_path):
+    """
+    Parses a PubMed XML file, extracting metadata (title, abstract, MeSH terms, etc.) while filtering out non-research
+    articles.
+    """
     articles = []
 
     tree = ET.parse(xml_path)
@@ -70,7 +75,10 @@ def parse_pubmed_file_filtered(xml_path):
     return articles
 
 
-def filter_pubmed_articles_by_topics(articles, topics, verbose=True):
+def filter_pubmed_articles_by_topics(articles, topics, verbose=False):
+    """
+    Filters PubMed articles by matching given topics in the title, abstract, or MeSH terms.
+    """
     filtered = []
     for article in articles:
         text = (article["title"] or "") + " " + (article["abstract"] or "")
@@ -87,6 +95,9 @@ def filter_pubmed_articles_by_topics(articles, topics, verbose=True):
 
 
 def parse_pmc_file_filtered(xml_path, include_body=False):
+    """
+    Parses a single PMC XML article and extracts metadata, optionally including the full article body.
+    """
     articles = []
 
     try:
@@ -149,7 +160,11 @@ def parse_pmc_file_filtered(xml_path, include_body=False):
     return articles
 
 
-def parse_folder_pmc(folder_path, include_body=False, limit=500):
+def parse_folder_pmc(folder_path, include_body=False, limit=None):
+    """
+    Parses PMC XML files from a folder, aggregating articles into a list.
+    Optionally limits the number of files processed.
+    """
     all_articles = []
     count = 0
 
@@ -163,13 +178,17 @@ def parse_folder_pmc(folder_path, include_body=False, limit=500):
         if articles:
             all_articles.extend(articles)
             count += 1
-            if limit and count >= limit:
+
+            if limit is not None and count >= limit:
                 break
 
     return all_articles
 
 
-def filter_pmc_articles_by_topics(articles, topics, include_body_in_filter=True, verbose=True):
+def filter_pmc_articles_by_topics(articles, topics, include_body_in_filter=True, verbose=False):
+    """
+    Filters PMC articles by matching topics across multiple fields, optionally including the article body.
+    """
     filtered = []
     topics_lower = [t.lower() for t in topics]
 
@@ -196,6 +215,9 @@ def filter_pmc_articles_by_topics(articles, topics, include_body_in_filter=True,
 
 
 def prepare_pubmed_documents(articles):
+    """
+    Converts a list of parsed PubMed articles into LangChain Document objects with metadata.
+    """
     docs = []
     for article in articles:
         content = f"{article.get('title', '')}\n{article.get('abstract', '')}"
@@ -210,8 +232,9 @@ def prepare_pubmed_documents(articles):
 
 
 def prepare_pmc_documents(articles, chunk_size=1000, chunk_overlap=200):
-
-
+    """
+    Converts PMC articles into chunked Document objects for downstream embedding and retrieval, splitting full texts if present.
+    """
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap
@@ -252,6 +275,32 @@ def prepare_pmc_documents(articles, chunk_size=1000, chunk_overlap=200):
                 ))
 
     return docs
+
+
+def load_and_prepare_documents(topics, include_body=True, pmc_limit=None):
+    """
+    Loads and filters PubMed and PMC articles based on given topics, returning them as LangChain Documents.
+    """
+    pubmed_files = glob.glob("data/pubmed*.xml")
+    parsed_articles_pubmed = []
+    for file_path in pubmed_files:
+        parsed_articles_pubmed.extend(parse_pubmed_file_filtered(file_path))
+    filtered_articles_pubmed = filter_pubmed_articles_by_topics(parsed_articles_pubmed, topics)
+
+    pmc_dirs = [os.path.join("data", d) for d in os.listdir("data")
+                if d.lower().startswith("pmc") and os.path.isdir(os.path.join("data", d))]
+
+    if not pubmed_files and not pmc_dirs:
+        raise FileNotFoundError("No data files found in 'data/'. Please run the download script.")
+
+    articles_pmc = []
+    for folder_path in pmc_dirs:
+        articles_pmc.extend(parse_folder_pmc(folder_path, include_body=include_body, limit=pmc_limit))
+    filtered_articles_pmc = filter_pmc_articles_by_topics(articles_pmc, topics, include_body_in_filter=include_body)
+
+    pubmed_docs = prepare_pubmed_documents(filtered_articles_pubmed)
+    pmc_docs = prepare_pmc_documents(filtered_articles_pmc)
+    return pubmed_docs + pmc_docs
 
 
 
