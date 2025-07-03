@@ -33,6 +33,22 @@ Citations in [PMID...] or [PMC...] format
 2. Run the download script to fetch data (based on `filelist.txt`)
 3. Use the CLI or Docker to run the summarization tool
 
+🚀 Usage
+1. Download PubMed Data (Optional)
+Before running the summarization tool, you can download and extract the required PubMed .xml.gz files by running:
+
+
+# docker run summarization_tool python scripts/download_and_unzip_pubmed.py
+# Note: By default, the script downloads the first 5 PubMed files listed in data/filelist.txt.
+You can change this behavior by modifying the limit parameter in scripts/download_and_unzip_pubmed.py.
+
+Make sure filelist.txt exists in the data/ directory with the list of filenames to download.
+2. Run the Summarization Tool
+Once the data is available in the data/ directory, run the summarization tool with your role and question:
+
+docker run --env-file .env summarization_tool python main.py --role "pediatrician" --question "What are the latest treatments for juvenile arthritis?"
+Make sure your .env file includes a valid OPENAI_API_KEY.
+
 
 ## 🐳 Docker
 

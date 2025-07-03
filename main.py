@@ -1,7 +1,8 @@
 import argparse
 import glob
 import os
-
+import json
+from typing import Tuple, Dict
 from app.data_loader import (
     parse_pubmed_file_filtered,
     filter_pubmed_articles_by_topics,
@@ -16,9 +17,10 @@ from app.retrieval import (
     build_faiss_vectorstore,
 )
 from app.summarizer import generate_summary_from_documents
+from app.evaluator import evaluate_summary
 
 
-def generate_summary(user_role: str, user_question: str) -> str:
+def generate_summary(user_role: str, user_question: str) -> Tuple[str, Dict[str, dict]]:
     step_back_summary, topics = step_back_and_extract_topics(user_question)
     expand_topics = softly_expand_topics(topics)
     print(f"Expanded Topics: {expand_topics}")
@@ -48,10 +50,13 @@ def generate_summary(user_role: str, user_question: str) -> str:
     vectorstore = build_faiss_vectorstore(all_docs)
 
     query_text = f"""Question: {user_question}
-General Context: {step_back_summary}""".strip()
+    General Context: {step_back_summary}""".strip()
     similar_docs = vectorstore.similarity_search(query_text, k=7)
 
-    return generate_summary_from_documents(user_role, user_question, similar_docs)
+    summary = generate_summary_from_documents(user_role, user_question, similar_docs)
+    evaluation_report = evaluate_summary(user_role, user_question, summary)
+
+    return summary, evaluation_report
 
 
 if __name__ == "__main__":
@@ -61,7 +66,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    summary = generate_summary(user_role=args.role, user_question=args.question)
+    summary_result, evaluation_report_result = generate_summary(user_role=args.role, user_question=args.question)
 
-    print("\n--- Summary ---\n")
-    print(summary)
+    print('summary:\n',summary_result)
+    print('\n\n')
+    print('evaluation_report:\n', json.dumps(evaluation_report_result, indent=2, ensure_ascii=False))

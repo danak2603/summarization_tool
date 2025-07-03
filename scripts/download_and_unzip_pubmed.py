@@ -30,7 +30,7 @@ from html.parser import HTMLParser
 PUBMED_BASE_URL = "https://ftp.ncbi.nlm.nih.gov/pubmed/baseline/"
 PMC_OA_BASE_URL = "https://ftp.ncbi.nlm.nih.gov/pub/pmc/oa_bulk/"
 DOWNLOAD_COUNT = 5  # Set to None to download all
-OUTPUT_DIR = "/Users/danakoslawsky/Documents/ראיונות/predicta med/ai_engineer_home_assignment_predicta_med/data"
+OUTPUT_DIR = "data"
 
 def download_file(url, output_path):
     print(f"\nDownloading: {url}")
